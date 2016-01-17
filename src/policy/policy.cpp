@@ -15,7 +15,7 @@
 #include <boost/foreach.hpp>
 
 /** Default for -replacebyfee, which controls replace-by-fee policy */
-unsigned int nRbfPolicy = 2;
+unsigned int nRbfPolicy = 0;
 
     /**
      * Check transaction inputs to mitigate two
