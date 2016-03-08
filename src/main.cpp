@@ -2752,7 +2752,7 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
         return it->second;
 
     // Construct new block index object
-    CBlockIndex* pindexNew = new CBlockIndex(block);
+    CBlockIndex* pindexNew = new CBlockIndex(block, GetTime());
     assert(pindexNew);
     // We assign the sequence id to blocks only when the full data is available,
     // to avoid miners withholding blocks but broadcasting headers, to get a
@@ -3231,7 +3231,7 @@ bool TestBlockValidity(CValidationState& state, const CChainParams& chainparams,
         return error("%s: CheckIndexAgainstCheckpoint(): %s", __func__, state.GetRejectReason().c_str());
 
     CCoinsViewCache viewNew(pcoinsTip);
-    CBlockIndex indexDummy(block);
+    CBlockIndex indexDummy(block, 0);
     indexDummy.pprev = pindexPrev;
     indexDummy.nHeight = pindexPrev->nHeight + 1;
 
