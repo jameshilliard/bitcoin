@@ -148,9 +148,9 @@ public:
 
 class TransactionSignatureChecker : public BaseSignatureChecker
 {
-private:
+protected:
     const CTransaction* txTo;
-    unsigned int nIn;
+    const unsigned int nIn;
     const CAmount amount;
     const PrecomputedTransactionData* txdata;
 
@@ -173,6 +173,19 @@ private:
 public:
     MutableTransactionSignatureChecker(const CMutableTransaction* txToIn, unsigned int nInIn, const CAmount& amount) : TransactionSignatureChecker(&txTo, nInIn, amount), txTo(*txToIn) {}
 };
+
+class LowSMutableTransactionSignatureChecker : public TransactionSignatureChecker
+{
+private:
+    const CTransaction nonMutableTxTo;
+public:
+    CMutableTransaction txTo;
+
+public:
+    LowSMutableTransactionSignatureChecker(CMutableTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : TransactionSignatureChecker(&nonMutableTxTo, nInIn, amountIn), nonMutableTxTo(*txToIn), txTo(*txToIn) {}
+    bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
+};
+
 
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = NULL);
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = NULL);

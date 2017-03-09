@@ -572,7 +572,7 @@ static bool IsCurrentForFeeEstimation()
 
 bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const CTransactionRef& ptx, bool fLimitFree,
                               bool* pfMissingInputs, int64_t nAcceptTime, std::list<CTransactionRef>* plTxnReplaced,
-                              bool fOverrideMempoolLimit, const CAmount& nAbsurdFee, std::vector<uint256>& vHashTxnToUncache)
+                              bool fOverrideMempoolLimit, const CAmount& nAbsurdFee, std::vector<uint256>& vHashTxnToUncache, bool fPossiblyMalleate)
 {
     const CTransaction& tx = *ptx;
     const uint256 hash = tx.GetHash();
@@ -946,10 +946,12 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
             scriptVerifyFlags = GetArg("-promiscuousmempoolflags", scriptVerifyFlags);
         }
 
+        CMutableTransaction mtx(tx);
+
         // Check against previous transactions
         // This is done last to help prevent CPU exhaustion denial-of-service attacks.
         PrecomputedTransactionData txdata(tx);
-        if (!CheckInputs(tx, state, view, true, scriptVerifyFlags, true, txdata)) {
+        if (!CheckInputs(tx, state, view, true, scriptVerifyFlags, true, txdata, NULL, fPossiblyMalleate ? &mtx : NULL)) {
             // SCRIPT_VERIFY_CLEANSTACK requires SCRIPT_VERIFY_WITNESS, so we
             // need to turn both off, and compare against just turning off CLEANSTACK
             // to see if the failure is specifically due to witness validation.
@@ -996,13 +998,18 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
         // transactions in the mempool.
         bool validForFeeEstimation = !fReplacementTransaction && IsCurrentForFeeEstimation() && pool.HasNoInputsOf(tx);
 
-        // Store transaction in memory
-        pool.addUnchecked(hash, entry, setAncestors, validForFeeEstimation);
+        if (fPossiblyMalleate && mtx.GetHash() != tx.GetHash()) {
+            CTxMemPoolEntry entry2(MakeTransactionRef(mtx), nFees, nAcceptTime, dPriority, chainActive.Height(), inChainInputValue, fSpendsCoinbase, nSigOpsCost, lp);
+            pool.addUnchecked(mtx.GetHash(), entry2, setAncestors, validForFeeEstimation);
+            if (plTxnReplaced) plTxnReplaced->push_back(ptx); // Place original in extra pool for compact reconstruction
+        } else
+            // Store transaction in memory
+            pool.addUnchecked(hash, entry, setAncestors, validForFeeEstimation);
 
         // trim mempool and check if tx was trimmed
         if (!fOverrideMempoolLimit) {
             LimitMempoolSize(pool, GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000, GetArg("-mempoolexpiry", DEFAULT_MEMPOOL_EXPIRY) * 60 * 60);
-            if (!pool.exists(hash))
+            if (!pool.exists(hash) && !pool.exists(mtx.GetHash()))
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool full");
         }
     }
@@ -1014,10 +1021,10 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
 
 bool AcceptToMemoryPoolWithTime(CTxMemPool& pool, CValidationState &state, const CTransactionRef &tx, bool fLimitFree,
                         bool* pfMissingInputs, int64_t nAcceptTime, std::list<CTransactionRef>* plTxnReplaced,
-                        bool fOverrideMempoolLimit, const CAmount nAbsurdFee)
+                        bool fOverrideMempoolLimit, const CAmount nAbsurdFee, bool fPossiblyMalleate)
 {
     std::vector<uint256> vHashTxToUncache;
-    bool res = AcceptToMemoryPoolWorker(pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, vHashTxToUncache);
+    bool res = AcceptToMemoryPoolWorker(pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, vHashTxToUncache, fPossiblyMalleate);
     if (!res) {
         BOOST_FOREACH(const uint256& hashTx, vHashTxToUncache)
             pcoinsTip->Uncache(hashTx);
@@ -1030,9 +1037,9 @@ bool AcceptToMemoryPoolWithTime(CTxMemPool& pool, CValidationState &state, const
 
 bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransactionRef &tx, bool fLimitFree,
                         bool* pfMissingInputs, std::list<CTransactionRef>* plTxnReplaced,
-                        bool fOverrideMempoolLimit, const CAmount nAbsurdFee)
+                        bool fOverrideMempoolLimit, const CAmount nAbsurdFee, bool fPossiblyMalleate)
 {
-    return AcceptToMemoryPoolWithTime(pool, state, tx, fLimitFree, pfMissingInputs, GetTime(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee);
+    return AcceptToMemoryPoolWithTime(pool, state, tx, fLimitFree, pfMissingInputs, GetTime(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, fPossiblyMalleate);
 }
 
 /** Return transaction in txOut, and if it was found inside a block, its hash is placed in hashBlock */
@@ -1414,7 +1421,7 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
 }
 }// namespace Consensus
 
-bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks)
+bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks, CMutableTransaction *mtx)
 {
     if (!tx.IsCoinBase())
     {
@@ -1440,7 +1447,7 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                 assert(coins);
 
                 // Verify signature
-                CScriptCheck check(*coins, tx, i, flags, cacheStore, &txdata);
+                CScriptCheck check(*coins, tx, i, flags & ~SCRIPT_VERIFY_LOW_S, cacheStore, &txdata);
                 if (pvChecks) {
                     pvChecks->push_back(CScriptCheck());
                     check.swap(pvChecks->back());
@@ -1465,8 +1472,27 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                     // peering with non-upgraded nodes even after soft-fork
                     // super-majority signaling has occurred.
                     return state.DoS(100,false, REJECT_INVALID, strprintf("mandatory-script-verify-flag-failed (%s)", ScriptErrorString(check.GetScriptError())));
+                } else if (mtx && !mtx->HasWitness()) {
+                    const CScript &scriptSig    =  mtx->vin[i].scriptSig;
+                    const CScriptWitness *wit   = &mtx->vin[i].scriptWitness;
+                    const CScript &scriptPubKey = coins->vout[tx.vin[i].prevout.n].scriptPubKey;
+                    const CAmount &nAmount      = coins->vout[tx.vin[i].prevout.n].nValue;
+
+                    LowSMutableTransactionSignatureChecker checker(mtx, i, nAmount);
+                    if (VerifyScript(scriptSig, scriptPubKey, wit, flags & ~SCRIPT_VERIFY_LOW_S, checker, NULL)) {
+                        const CScript &scriptSig = checker.txTo.vin[i].scriptSig;
+                        if (VerifyScript(scriptSig, scriptPubKey, wit, flags & ~SCRIPT_VERIFY_LOW_S, MutableTransactionSignatureChecker(&checker.txTo, i, nAmount), NULL))
+                            mtx->vin[i].scriptSig = scriptSig;
+                        else {
+                            error("Failed to mutate transaction to make it standard\n");
+                            return state.Invalid(false, REJECT_NONSTANDARD, strprintf("low-s-mutation-failed (%s)", ScriptErrorString(SCRIPT_ERR_SIG_HIGH_S)));
+                        }
+                    } else
+                        error("BUG: Mutable Tx Sig checker failed to VerifyScript\n");
                 }
             }
+            if (mtx && mtx->GetHash() != tx.GetHash())
+                LogPrintf("Mutated transaction added to mempool! (%s -> %s)\n", tx.GetHash().ToString().c_str(), mtx->GetHash().ToString().c_str());
         }
     }
 
