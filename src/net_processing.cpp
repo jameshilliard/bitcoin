@@ -919,13 +919,18 @@ bool static AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
     return true;
 }
 
-static void RelayTransaction(const CTransaction& tx, CConnman& connman)
+static void RelayTransaction(const uint256& hash, CConnman& connman)
 {
-    CInv inv(MSG_TX, tx.GetHash());
+    CInv inv(MSG_TX, hash);
     connman.ForEachNode([&inv](CNode* pnode)
     {
         pnode->PushInventory(inv);
     });
+}
+
+static void RelayTransaction(const CTransaction& tx, CConnman& connman)
+{
+    return RelayTransaction(tx.GetHash(), connman);
 }
 
 static void RelayAddress(const CAddress& addr, bool fReachable, CConnman& connman)
@@ -1795,10 +1800,11 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         mapAlreadyAskedFor.erase(inv.hash);
 
         std::list<CTransactionRef> lRemovedTxn;
+        uint256 malleatedHash(ptx->GetHash());
 
-        if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &fMissingInputs, &lRemovedTxn, false, 0, true)) {
+        if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &fMissingInputs, &lRemovedTxn, false, 0, &malleatedHash)) {
             mempool.check(pcoinsTip);
-            RelayTransaction(tx, connman);
+            RelayTransaction(malleatedHash, connman);
             for (unsigned int i = 0; i < tx.vout.size(); i++) {
                 vWorkQueue.emplace_back(inv.hash, i);
             }
@@ -1834,9 +1840,9 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
                     if (setMisbehaving.count(fromPeer))
                         continue;
-                    if (AcceptToMemoryPool(mempool, stateDummy, porphanTx, true, &fMissingInputs2, &lRemovedTxn, false, 0, true)) {
+                    if (AcceptToMemoryPool(mempool, stateDummy, porphanTx, true, &fMissingInputs2, &lRemovedTxn, false, 0, &malleatedHash)) {
                         LogPrint("mempool", "   accepted orphan tx %s\n", orphanHash.ToString());
-                        RelayTransaction(orphanTx, connman);
+                        RelayTransaction(malleatedHash, connman);
                         for (unsigned int i = 0; i < orphanTx.vout.size(); i++) {
                             vWorkQueue.emplace_back(orphanHash, i);
                         }

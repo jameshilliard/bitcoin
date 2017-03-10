@@ -572,7 +572,8 @@ static bool IsCurrentForFeeEstimation()
 
 bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const CTransactionRef& ptx, bool fLimitFree,
                               bool* pfMissingInputs, int64_t nAcceptTime, std::list<CTransactionRef>* plTxnReplaced,
-                              bool fOverrideMempoolLimit, const CAmount& nAbsurdFee, std::vector<uint256>& vHashTxnToUncache, bool fPossiblyMalleate)
+                              bool fOverrideMempoolLimit, const CAmount& nAbsurdFee, std::vector<uint256>& vHashTxnToUncache,
+                              uint256* malleatedHash)
 {
     const CTransaction& tx = *ptx;
     const uint256 hash = tx.GetHash();
@@ -951,7 +952,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
         // Check against previous transactions
         // This is done last to help prevent CPU exhaustion denial-of-service attacks.
         PrecomputedTransactionData txdata(tx);
-        if (!CheckInputs(tx, state, view, true, scriptVerifyFlags, true, txdata, NULL, fPossiblyMalleate ? &mtx : NULL)) {
+        if (!CheckInputs(tx, state, view, true, scriptVerifyFlags, true, txdata, NULL, malleatedHash ? &mtx : NULL)) {
             // SCRIPT_VERIFY_CLEANSTACK requires SCRIPT_VERIFY_WITNESS, so we
             // need to turn both off, and compare against just turning off CLEANSTACK
             // to see if the failure is specifically due to witness validation.
@@ -998,9 +999,10 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
         // transactions in the mempool.
         bool validForFeeEstimation = !fReplacementTransaction && IsCurrentForFeeEstimation() && pool.HasNoInputsOf(tx);
 
-        if (fPossiblyMalleate && mtx.GetHash() != tx.GetHash()) {
+        if (malleatedHash && mtx.GetHash() != tx.GetHash()) {
             CTxMemPoolEntry entry2(MakeTransactionRef(mtx), nFees, nAcceptTime, dPriority, chainActive.Height(), inChainInputValue, fSpendsCoinbase, nSigOpsCost, lp);
             pool.addUnchecked(mtx.GetHash(), entry2, setAncestors, validForFeeEstimation);
+            *malleatedHash = mtx.GetHash();
             if (plTxnReplaced) plTxnReplaced->push_back(ptx); // Place original in extra pool for compact reconstruction
         } else
             // Store transaction in memory
@@ -1021,10 +1023,10 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
 
 bool AcceptToMemoryPoolWithTime(CTxMemPool& pool, CValidationState &state, const CTransactionRef &tx, bool fLimitFree,
                         bool* pfMissingInputs, int64_t nAcceptTime, std::list<CTransactionRef>* plTxnReplaced,
-                        bool fOverrideMempoolLimit, const CAmount nAbsurdFee, bool fPossiblyMalleate)
+                        bool fOverrideMempoolLimit, const CAmount nAbsurdFee, uint256* malleatedHash)
 {
     std::vector<uint256> vHashTxToUncache;
-    bool res = AcceptToMemoryPoolWorker(pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, vHashTxToUncache, fPossiblyMalleate);
+    bool res = AcceptToMemoryPoolWorker(pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, vHashTxToUncache, malleatedHash);
     if (!res) {
         BOOST_FOREACH(const uint256& hashTx, vHashTxToUncache)
             pcoinsTip->Uncache(hashTx);
@@ -1037,9 +1039,9 @@ bool AcceptToMemoryPoolWithTime(CTxMemPool& pool, CValidationState &state, const
 
 bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransactionRef &tx, bool fLimitFree,
                         bool* pfMissingInputs, std::list<CTransactionRef>* plTxnReplaced,
-                        bool fOverrideMempoolLimit, const CAmount nAbsurdFee, bool fPossiblyMalleate)
+                        bool fOverrideMempoolLimit, const CAmount nAbsurdFee, uint256* malleatedHash)
 {
-    return AcceptToMemoryPoolWithTime(pool, state, tx, fLimitFree, pfMissingInputs, GetTime(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, fPossiblyMalleate);
+    return AcceptToMemoryPoolWithTime(pool, state, tx, fLimitFree, pfMissingInputs, GetTime(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, malleatedHash);
 }
 
 /** Return transaction in txOut, and if it was found inside a block, its hash is placed in hashBlock */
