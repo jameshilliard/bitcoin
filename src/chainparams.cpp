@@ -257,6 +257,92 @@ public:
 static CTestNetParams testNetParams;
 
 /**
+ * Extnet
+ */
+class CExtNetParams : public CChainParams {
+public:
+    CExtNetParams() {
+        strNetworkID = "extnet";
+        consensus.nSubsidyHalvingInterval = 210000;
+        consensus.BIP34Height = 8;
+        consensus.BIP34Hash = uint256();
+        consensus.BIP65Height = 8; // 00000000007f6655f22f98e72ed80d8b06dc761d5da09df0fa1dc4be4f861eb6
+        consensus.BIP66Height = 8; // 000000002104c8c45e99a8853285a3b592602a3ccde2b832481da85e9e4ba182
+        consensus.powLimit = uint256S("000001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+        consensus.nPowTargetSpacing = 10 * 60;
+        consensus.fPowAllowMinDifficultyBlocks = true;
+        consensus.fPowNoRetargeting = false;
+        consensus.nRuleChangeActivationThreshold = 1512; // 75% for testchains
+        consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
+        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
+        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1199145601; // January 1, 2008
+        consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1230767999; // December 31, 2008
+
+        // Deployment of BIP68, BIP112, and BIP113.
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 1456790400; // March 1st, 2016
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 0xffffffff; // May 1st, 2017
+
+        // Deployment of SegWit (BIP141, BIP143, and BIP147)
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].bit = 1;
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = 1462060800; // May 1st 2016
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 0xffffffff; // May 1st 2017
+
+        // The best chain should have at least this much work.
+        consensus.nMinimumChainWork = uint256S("0000000000000000000000000000000000000000000000000000000000800040");
+
+        // By default assume that the signatures in ancestors of this block are valid.
+        consensus.defaultAssumeValid = uint256S("0x00"); //1079274
+
+        pchMessageStart[0] = 0xfd;
+        pchMessageStart[1] = 0xab;
+        pchMessageStart[2] = 0xa1;
+        pchMessageStart[3] = 0xc4;
+        nDefaultPort = 58901;
+        nPruneAfterHeight = 1000;
+
+        genesis = CreateGenesisBlock(1490103661, 8, 0x1e01ffff, 1, 50 * COIN);
+        consensus.hashGenesisBlock = genesis.GetHash();
+        LogPrintf("BLOCKHASH=%s", consensus.hashGenesisBlock.ToString());
+        assert(consensus.hashGenesisBlock == uint256S("0x2608e637378818dc8107b524f81d2871b2760fc29232b1f4eec9e93366030488"));
+        assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
+
+        vFixedSeeds.clear();
+        vSeeds.clear();
+        // nodes with support for servicebits filtering should be at the top
+        vSeeds.push_back(CDNSSeedData("45.33.50.84", "45.33.50.84", true));
+
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,30);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,50);
+        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,158);
+        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x05)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x05)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
+
+        vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
+
+        fMiningRequiresPeers = true;
+        fDefaultConsistencyChecks = false;
+        fRequireStandard = false;
+        fMineBlocksOnDemand = false;
+
+
+        checkpointData = (CCheckpointData) {
+            boost::assign::map_list_of
+            ( 0, uint256S("2608e637378818dc8107b524f81d2871b2760fc29232b1f4eec9e93366030488")),
+        };
+
+        chainTxData = ChainTxData{
+            0,
+            0,
+            0
+        };
+
+    }
+};
+static CExtNetParams extNetParams;
+
+/**
  * Regression test
  */
 class CRegTestParams : public CChainParams {
@@ -350,6 +436,8 @@ CChainParams& Params(const std::string& chain)
             return mainParams;
     else if (chain == CBaseChainParams::TESTNET)
             return testNetParams;
+    else if (chain == CBaseChainParams::EXTNET)
+            return extNetParams;
     else if (chain == CBaseChainParams::REGTEST)
             return regTestParams;
     else

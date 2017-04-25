@@ -12,12 +12,14 @@
 
 const std::string CBaseChainParams::MAIN = "main";
 const std::string CBaseChainParams::TESTNET = "test";
+const std::string CBaseChainParams::EXTNET = "extnet";
 const std::string CBaseChainParams::REGTEST = "regtest";
 
 void AppendParamsHelpMessages(std::string& strUsage, bool debugHelp)
 {
     strUsage += HelpMessageGroup(_("Chain selection options:"));
     strUsage += HelpMessageOpt("-testnet", _("Use the test chain"));
+    strUsage += HelpMessageOpt("-extnet", _("Use the extnet chain"));
     if (debugHelp) {
         strUsage += HelpMessageOpt("-regtest", "Enter regression test mode, which uses a special chain in which blocks can be solved instantly. "
                                    "This is intended for regression testing tools and app development.");
@@ -51,6 +53,20 @@ public:
 };
 static CBaseTestNetParams testNetParams;
 
+/**
+ * Extnet
+ */
+class CBaseExtNetParams : public CBaseChainParams
+{
+public:
+    CBaseExtNetParams()
+    {
+        nRPCPort = 58902;
+        strDataDir = "extnet";
+    }
+};
+static CBaseExtNetParams extNetParams;
+
 /*
  * Regression test
  */
@@ -79,6 +95,8 @@ CBaseChainParams& BaseParams(const std::string& chain)
         return mainParams;
     else if (chain == CBaseChainParams::TESTNET)
         return testNetParams;
+    else if (chain == CBaseChainParams::EXTNET)
+        return extNetParams;
     else if (chain == CBaseChainParams::REGTEST)
         return regTestParams;
     else
@@ -94,6 +112,7 @@ std::string ChainNameFromCommandLine()
 {
     bool fRegTest = GetBoolArg("-regtest", false);
     bool fTestNet = GetBoolArg("-testnet", false);
+    bool fExtNet = GetBoolArg("-extnet", false);
 
     if (fTestNet && fRegTest)
         throw std::runtime_error("Invalid combination of -regtest and -testnet.");
@@ -101,6 +120,8 @@ std::string ChainNameFromCommandLine()
         return CBaseChainParams::REGTEST;
     if (fTestNet)
         return CBaseChainParams::TESTNET;
+    if (fExtNet)
+        return CBaseChainParams::EXTNET;
     return CBaseChainParams::MAIN;
 }
 
