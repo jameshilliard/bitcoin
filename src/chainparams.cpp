@@ -167,6 +167,94 @@ public:
 };
 static CMainParams mainParams;
 
+
+class CUnlParams : public CChainParams {
+public:
+    CUnlParams() {
+        strNetworkID = "nol";
+        consensus.nSubsidyHalvingInterval = 210000;
+        consensus.BIP34Height = 10000000;
+        consensus.BIP34Hash = uint256S("0x0000000093171284bac3e6f1ad6dc1062d894fef351fd8f6c44a22dd2889e027");
+        consensus.BIP65Height = 10; // 000000000000000004c2b624ed5d7756c508d90fd0da2c7c679febfa6c4735f0
+        consensus.BIP66Height = 10; // 00000000000000000379eaa19dce8c9b722d46ae6a57c2f1a988119488b50931
+        consensus.powLimit = uint256S("3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        //consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+        consensus.nPowTargetSpacing = 10 * 60;
+        consensus.fPowAllowMinDifficultyBlocks = false;
+        consensus.fPowNoRetargeting = false;
+        consensus.nRuleChangeActivationThreshold = 1916; // 95% of 2016
+        consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
+        /** 
+         * The message start string is designed to be unlikely to occur in normal data.
+         * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
+         * a large 32-bit integer with any alignment.
+         */
+        pchMessageStart[0] = 0xfa;
+        pchMessageStart[1] = 0xce;
+        pchMessageStart[2] = 0xc4;
+        pchMessageStart[3] = 0xe9;
+        nDefaultPort = 9333;
+        nPruneAfterHeight = 100000;
+
+
+        // replace with generated genesis block
+        // CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
+        const CScript genesisOutputScript = CScript() << ParseHex("76a91472ecf500e25c73965301f43ee94fbec073cd8eed88ac");
+        genesis = CreateGenesisBlock("Bigger blocks FTW (for the world)", genesisOutputScript, 1467923406, 131338110, 486604799, 536870912, CAmount(5000000000));
+        consensus.hashGenesisBlock = genesis.GetHash();
+
+        //assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
+        //assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
+
+        // BITCOINUNLIMITED START
+        vFixedSeeds.clear();
+        vSeeds.clear();
+        vSeeds.push_back(CDNSSeedData("bitcoinunlimited.info", "nolnet-seed.bitcoinunlimited.info", true));
+        //vSeeds.push_back(CDNSSeedData("bitnodes.io", "seed.bitnodes.io"));      // Bitnodes (Addy Yeow)
+        //vSeeds.push_back(CDNSSeedData("bitcoin.sipa.be", "seed.bitcoin.sipa.be")); // Pieter Wuille
+        // BITCOINUNLIMITED END
+
+        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
+        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
+        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,128);
+        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x88)(0xB2)(0x1E).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x88)(0xAD)(0xE4).convert_to_container<std::vector<unsigned char> >();
+
+        // BITCOINUNLIMITED START
+        vFixedSeeds = std::vector<SeedSpec6>();
+        // BITCOINUNLIMITED END
+
+        //fMiningRequiresPeers = true;
+        fDefaultConsistencyChecks = false;
+        fRequireStandard = true;
+        fMineBlocksOnDemand = false;
+
+        // Deployment of BIP68, BIP112, and BIP113.
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].bit = 0;
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nStartTime = 1456790400; // March 1st, 2016
+        consensus.vDeployments[Consensus::DEPLOYMENT_CSV].nTimeout = 1493596800; // May 1st, 2017
+
+        // Deployment of SegWit (BIP141, BIP143, and BIP147)
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].bit = 1;
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nStartTime = 1462060800; // May 1st 2016
+        consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1493596800; // May 1st 2017
+
+        checkpointData = (CCheckpointData){
+            boost::assign::map_list_of
+            ( 0, uint256S("0000000000000000000000000000000000000000000000000000000000000000"))
+        };
+
+        chainTxData = ChainTxData{
+            0,
+            0,
+            0
+        };
+    }
+};
+CUnlParams unlParams;
+
+
 /**
  * Testnet (v3)
  */
@@ -352,6 +440,8 @@ CChainParams& Params(const std::string& chain)
             return testNetParams;
     else if (chain == CBaseChainParams::REGTEST)
             return regTestParams;
+    else if (chain == CBaseChainParams::UNL)
+        return unlParams;
     else
         throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
