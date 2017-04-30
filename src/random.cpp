@@ -25,8 +25,11 @@
 #include <sys/syscall.h>
 #include <linux/random.h>
 #endif
-#ifdef HAVE_GETENTROPY
+#if defined(HAVE_GETENTROPY) || defined(HAVE_GETENTROPY_RAND)
 #include <unistd.h>
+#endif
+#if defined(HAVE_GETENTROPY_RAND) && !defined(HAVE_GETENTROPY)
+#include <sys/random.h>
 #endif
 #ifdef HAVE_SYSCTL_ARND
 #include <sys/sysctl.h>
@@ -156,7 +159,7 @@ void GetOSRand(unsigned char *ent32)
             RandFailure();
         }
     }
-#elif defined(HAVE_GETENTROPY)
+#elif defined(HAVE_GETENTROPY) || defined(HAVE_GETENTROPY_RAND)
     /* On OpenBSD this can return up to 256 bytes of entropy, will return an
      * error if more are requested.
      * The call cannot return less than the requested number of bytes.
