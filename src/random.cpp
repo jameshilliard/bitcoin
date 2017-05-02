@@ -164,9 +164,20 @@ void GetOSRand(unsigned char *ent32)
      * error if more are requested.
      * The call cannot return less than the requested number of bytes.
      */
+    #if defined(MAC_OSX)
+    // Fallback for OSX < 10.12
+    if (&getentropy != NULL) {
+        if (getentropy(ent32, NUM_OS_RANDOM_BYTES) != 0) {
+            RandFailure();
+        }
+    } else {
+        GetDevURandom(ent32);
+    }
+    #else
     if (getentropy(ent32, NUM_OS_RANDOM_BYTES) != 0) {
         RandFailure();
     }
+    #endif
 #elif defined(HAVE_SYSCTL_ARND)
     /* FreeBSD and similar. It is possible for the call to return less
      * bytes than requested, so need to read in a loop.
