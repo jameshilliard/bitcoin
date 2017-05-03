@@ -163,6 +163,7 @@ void GetOSRand(unsigned char *ent32)
     /* On OpenBSD this can return up to 256 bytes of entropy, will return an
      * error if more are requested.
      * The call cannot return less than the requested number of bytes.
+     * We need a fallback for OSX < 10.12
      */
     if (&getentropy != NULL) {
         if (getentropy(ent32, NUM_OS_RANDOM_BYTES) != 0) {
