@@ -1851,8 +1851,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         flags |= SCRIPT_VERIFY_NULLDUMMY;
     }
 
-    // SEGSIGNAL mandatory segwit signalling.
-    if ( VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_SEGSIGNAL, versionbitscache) == THRESHOLD_ACTIVE &&
+    // SPLITPROTECTION mandatory segwit signalling.
+    if ( VersionBitsState(pindex->pprev, chainparams.GetConsensus(), Consensus::DEPLOYMENT_SPLITPROTECTION, versionbitscache) == THRESHOLD_ACTIVE &&
          !IsWitnessLockedIn(pindex->pprev, chainparams.GetConsensus()) &&  // Segwit is not locked in
          !IsWitnessEnabled(pindex->pprev, chainparams.GetConsensus()) ) // and is not active.
     {

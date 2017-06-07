@@ -20,7 +20,7 @@ const struct BIP9DeploymentInfo VersionBitsDeploymentInfo[Consensus::MAX_VERSION
         /*.gbt_force =*/ true,
     },
     {
-        /*.name =*/ "segsignal",
+        /*.name =*/ "splitprotection",
         /*.gbt_force =*/ true,
     }
 };
@@ -153,18 +153,18 @@ protected:
     int64_t EndTime(const Consensus::Params& params) const { return params.vDeployments[id].nTimeout; }
     int Period(const Consensus::Params& params) const {
         if (params.nRuleChangeActivationThreshold == 1916 && params.nMinerConfirmationWindow == 2016 &&
-            params.vDeployments[id].bit == params.vDeployments[Consensus::DEPLOYMENT_SEGSIGNAL].bit &&
-            params.vDeployments[id].nStartTime == params.vDeployments[Consensus::DEPLOYMENT_SEGSIGNAL].nStartTime) {
-            return 504; // 504 block period for SEGSIGNAL only
+            params.vDeployments[id].bit == params.vDeployments[Consensus::DEPLOYMENT_SPLITPROTECTION].bit &&
+            params.vDeployments[id].nStartTime == params.vDeployments[Consensus::DEPLOYMENT_SPLITPROTECTION].nStartTime) {
+            return 504; // 504 block period for SPLITPROTECTION only
         }
         return params.nMinerConfirmationWindow;
     }
 
     int Threshold(const Consensus::Params& params) const {
         if (params.nRuleChangeActivationThreshold == 1916 && params.nMinerConfirmationWindow == 2016 &&
-            params.vDeployments[id].bit == params.vDeployments[Consensus::DEPLOYMENT_SEGSIGNAL].bit &&
-            params.vDeployments[id].nStartTime == params.vDeployments[Consensus::DEPLOYMENT_SEGSIGNAL].nStartTime) {
-            return round(504 * 0.65); // 65% threshold for SEGSIGNAL only
+            params.vDeployments[id].bit == params.vDeployments[Consensus::DEPLOYMENT_SPLITPROTECTION].bit &&
+            params.vDeployments[id].nStartTime == params.vDeployments[Consensus::DEPLOYMENT_SPLITPROTECTION].nStartTime) {
+            return round(504 * 0.65); // 65% threshold for SPLITPROTECTION only
         }
         return params.nRuleChangeActivationThreshold;
     }
