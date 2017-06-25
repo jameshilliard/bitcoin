@@ -10,7 +10,7 @@
 #include "serialize.h"
 #include "uint256.h"
 
-static const int32_t HARDFORK_VERSION_BIT = 0x80000000;
+static const uint32_t HARDFORK_VERSION_BIT = 0x80000000;
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work
@@ -23,7 +23,7 @@ class CBlockHeader
 {
 public:
     // header
-    int32_t nVersion;
+    uint32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
     uint32_t nTime;
