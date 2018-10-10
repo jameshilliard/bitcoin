@@ -294,10 +294,10 @@ void PaymentServer::handleURIOrFile(const QString& s)
         QUrlQuery uri((QUrl(s)));
         if (uri.hasQueryItem("r")) // payment request URI
         {
+#ifdef ENABLE_BIP70
             Q_EMIT message(tr("URI handling"),
                 tr("You are using a BIP70 URL which will be unsupported in the future."),
                 CClientUIInterface::ICON_WARNING);
-#ifdef ENABLE_BIP70
             QByteArray temp;
             temp.append(uri.queryItemValue("r"));
             QString decoded = QUrl::fromPercentEncoding(temp);
